@@ -36,6 +36,8 @@ if not exist "%HOOKS_DIR%" (
   mkdir "%HOOKS_DIR%"
 )
 
+echo %HOOK_FILE%
+
 REM Step 2: Write a Bash-compatible pre-push hook using /bin/sh
 setlocal disabledelayedexpansion
 (
@@ -58,6 +60,7 @@ setlocal disabledelayedexpansion
   echo.
   echo # Gather context information
   echo readonly REMOTE_URL="$(git remote get-url origin)"
+  echo readonly ORGANIZATION=`echo "$REMOTE_URL" ^| sed -E "s#(.*github.com[:/])([^/]+)(/.*)?#\2#"`
   echo readonly USER_EMAIL="$(git config user.email)"
   echo readonly USER_NAME="$(git config user.name)"
   echo readonly REPO_PATH="$(pwd)"
@@ -77,23 +80,13 @@ setlocal disabledelayedexpansion
   echo   exit 1
   echo fi
   echo.
-  echo # Check if the remote URL matches any allowed patterns.
-  echo # The logic is wrapped in a subshell to prevent variable scope issues.
-  echo ^(
-  echo   echo "$ALLOWED_PATTERNS" ^| while IFS= read -r pattern; do
-  echo     if [ -n "$pattern" ]; then
-  echo       if echo "$REMOTE_URL" ^| grep -qE -- "$pattern"; then
-  echo         exit 0
-  echo       fi
-  echo     fi
-  echo   done
-  echo   exit 1
-  echo ^)
   echo.
+  echo echo "[HOOK] Extracted Organization: $ORGANIZATION"
   echo # Check the exit code of the subshell block above.
+  echo.
+  echo echo "$ALLOWED_PATTERNS" ^| grep -q "$ORGANIZATION"
   echo if [ $? -eq 0 ]; then
-  echo   # Exit code 0 means a match was found.
-  echo   echo "[HOOK] Remote is authorized. Proceeding with push."
+  echo   echo "[HOOK] Remote organization is authorized. Proceeding with push."
   echo   exit 0
   echo else
   echo   # Exit code 1 means no match was found. Block and alert.
@@ -150,4 +143,3 @@ for /r "%SEARCH_DIR%" %%G in (.git) do (
 
 echo.
 echo Done.
-pause
